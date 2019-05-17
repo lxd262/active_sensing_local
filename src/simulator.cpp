@@ -289,7 +289,53 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
         // Otherwise, set sensing action to DO NOTHING.
         else
         {
-            task_action = planner_.getTaskAction();
+            //task_action = planner_.getTaskAction();
+                        
+            /*
+                code below use spin loops to set timer that enable synchronization
+            */
+            ros::NodeHandle n_h;
+            ros::Rate loop_rate(10);
+
+            ROS_INFO("REST FOR A WHILE!!!!!!!!");
+            int counter_b = 0;
+            while(counter_b < 100){
+                counter_b++;
+                ros::spinOnce();
+            }
+            ROS_INFO("REST DONE");
+
+            /*
+                code above use spin loops to set timer that enable synchronization
+            */
+
+
+            /*
+                code below get tast action
+            */
+
+            ros::Subscriber sub4 = n_h.subscribe("updateelse", 1000, updateCallback);
+            ROS_INFO("create a subber4");
+
+            while(true){
+                ros::spinOnce();
+                loop_rate.sleep();
+                if(update_flag == 1){
+                    break;
+                }
+            }
+            ROS_INFO("get out of subber4 loop");
+
+            update_flag = 0;
+            ROS_INFO("update_flag is %d", update_flag);
+            task_action(0) = update_location_x;
+            task_action(1) = update_location_y;
+            task_action(2) = update_location_z;
+
+            /*
+                code above get tast action
+            */
+
             planner_.predictBelief(task_action);
             updateSimulator(task_action);
 
