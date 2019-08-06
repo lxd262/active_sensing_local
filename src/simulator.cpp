@@ -247,23 +247,36 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
                 code below get tast action
             */
 
-            ros::Subscriber sub3 = n_h.subscribe("update", 1000, updateCallback);
-            ROS_INFO("create a subber3");
+            // ros::Subscriber sub3 = n_h.subscribe("update", 1000, updateCallback);
+            // ROS_INFO("create a subber3");
 
-            while(true){
-                ros::spinOnce();
-                loop_rate.sleep();
-                if(update_flag == 1){
-                    break;
-                }
+            // while(true){
+            //     ros::spinOnce();
+            //     loop_rate.sleep();
+            //     if(update_flag == 1){
+            //         break;
+            //     }
+            // }
+            // ROS_INFO("get out of subber3 loop");
+
+            // update_flag = 0;
+            // ROS_INFO("update_flag is %d", update_flag);
+            // task_action(0) = update_location_x;
+            // task_action(1) = update_location_y;
+            // task_action(2) = update_location_z;
+
+            ROS_INFO("waiting for update msg");
+            boost::shared_ptr<const active_sensing_continuous_local::UpdateInfo> updatemsg = ros::topic::waitForMessage<active_sensing_continuous_local::UpdateInfo>("update", n_h);
+            active_sensing_continuous_local::UpdateInfo this_msg;
+            if(updatemsg != NULL){
+                this_msg = *updatemsg;
             }
-            ROS_INFO("get out of subber3 loop");
-
             update_flag = 0;
-            ROS_INFO("update_flag is %d", update_flag);
-            task_action(0) = update_location_x;
-            task_action(1) = update_location_y;
-            task_action(2) = update_location_z;
+            ROS_INFO("update message recieved");
+
+            task_action(0) = this_msg.x;
+            task_action(1) = this_msg.y;
+            task_action(2) = this_msg.z;
 
             /*
                 code above get tast action
@@ -314,23 +327,36 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
                 code below get tast action
             */
 
-            ros::Subscriber sub4 = n_h.subscribe("updateelse", 1000, updateCallback);
-            ROS_INFO("create a subber4");
+            // ros::Subscriber sub4 = n_h.subscribe("updateelse", 1000, updateCallback);
+            // ROS_INFO("create a subber4");
 
-            while(true){
-                ros::spinOnce();
-                loop_rate.sleep();
-                if(update_flag == 1){
-                    break;
-                }
+            // while(true){
+            //     ros::spinOnce();
+            //     loop_rate.sleep();
+            //     if(update_flag == 1){
+            //         break;
+            //     }
+            // }
+            // ROS_INFO("get out of subber4 loop");
+
+            // update_flag = 0;
+            // ROS_INFO("update_flag is %d", update_flag);
+            // task_action(0) = update_location_x;
+            // task_action(1) = update_location_y;
+            // task_action(2) = update_location_z;
+
+            ROS_INFO("waiting for updateelse msg");
+            boost::shared_ptr<const active_sensing_continuous_local::UpdateInfo> updatemsg = ros::topic::waitForMessage<active_sensing_continuous_local::UpdateInfo>("updateelse", n_h);
+            active_sensing_continuous_local::UpdateInfo this_msg;
+            if(updatemsg != NULL){
+                this_msg = *updatemsg;
             }
-            ROS_INFO("get out of subber4 loop");
-
             update_flag = 0;
-            ROS_INFO("update_flag is %d", update_flag);
-            task_action(0) = update_location_x;
-            task_action(1) = update_location_y;
-            task_action(2) = update_location_z;
+            ROS_INFO("updateelse message recieved");
+
+            task_action(0) = this_msg.x;
+            task_action(1) = this_msg.y;
+            task_action(2) = this_msg.z;
 
             /*
                 code above get tast action
