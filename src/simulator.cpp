@@ -114,17 +114,21 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
         // If sensing is allowed in this step.
         if (n % (sensing_interval_ + 1) == 0)
         {
+
+            ros::Rate loop_rate(10);
+
             /*
                 code below use spin loops to set timer that enable synchronization
             */
 
-            ROS_INFO("REST FOR A WHILE!!!!!!!!");
+            ROS_INFO("REST FOR A WHILE!!!!!!!! before subscribe observation request");
             int counter_0 = 0;
-            while(counter_0 < 100){
+            while(counter_0 < 10){
                 counter_0++;
+                loop_rate.sleep();
                 ros::spinOnce();
             }
-            ROS_INFO("REST DONE");
+            ROS_INFO("1s REST DONE");
 
             /*
                 code above use spin loops to set timer that enable synchronization
@@ -139,9 +143,9 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
             */
 
             ros::NodeHandle n_h;
-            ros::Subscriber sub = n_h.subscribe("req_obsrv", 1000, reqObservationCallback);
-            ros::Rate loop_rate(10);
-            ROS_INFO("create a subber");
+            ros::Subscriber sub = n_h.subscribe("req_obsrv", 100000, reqObservationCallback);
+            
+            ROS_INFO("create a subber requesting observation");
 
             while(true){
                 ros::spinOnce();
@@ -150,11 +154,14 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
                     break;
                 }
             }
-            ROS_INFO("get out of subber loop");
+
+            ROS_INFO("get out of subber loop of requesting subscription");
 
             req_obversation_flag = 0;
             ROS_INFO("req_obversation_flag is %d", req_obversation_flag);
+            ROS_INFO("sensing action is %d", sensing_action_global);
             sensing_action = sensing_action_global;
+            sub.shutdown();
 
             /*
                 code above get sensing action
@@ -172,13 +179,14 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
                 code below use spin loops to set timer that enable synchronization
             */
 
-            ROS_INFO("REST FOR A WHILE!!!!!!!!");
+            ROS_INFO("REST FOR A WHILE!!!!!!!! after recieve observation request");
             int counter_a = 0;
-            while(counter_a < 100){
+            while(counter_a < 10){
                 counter_a++;
+                loop_rate.sleep();
                 ros::spinOnce();
             }
-            ROS_INFO("REST DONE");
+            ROS_INFO("1s REST DONE");
 
             /*
                 code above use spin loops to set timer that enable synchronization
@@ -190,8 +198,8 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
             */
             
             observation_global = observation(0);
-            ros::Publisher observation_pub = n_h.advertise<active_sensing_continuous_local::ObsrvBack>("obversation_back", 1000);
-            ROS_INFO("get into while(ros::ok()) loop");
+            ros::Publisher observation_pub = n_h.advertise<active_sensing_continuous_local::ObsrvBack>("obversation_back", 100000);
+            ROS_INFO("get into advertizing loop of observation back");
             while (ros::ok())
             {
                 int connections = observation_pub.getNumSubscribers();
@@ -211,7 +219,8 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
                 }
                 loop_rate.sleep();
             }
-            ROS_INFO("get out of while(ros::ok()) loop");
+            ROS_INFO("get out of publishing loop of obversation back");
+            observation_pub.shutdown();
 
             /*
                 code above publish observation
@@ -230,13 +239,14 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
                 code below use spin loops to set timer that enable synchronization
             */
 
-            ROS_INFO("REST FOR A WHILE!!!!!!!!");
+            ROS_INFO("REST FOR A WHILE!!!!!!!! after publishing observation back");
             int counter_b = 0;
-            while(counter_b < 100){
+            while(counter_b < 10){
                 counter_b++;
+                loop_rate.sleep();
                 ros::spinOnce();
             }
-            ROS_INFO("REST DONE");
+            ROS_INFO("1s REST DONE");
 
             /*
                 code above use spin loops to set timer that enable synchronization
@@ -272,11 +282,14 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
                 this_msg = *updatemsg;
             }
             update_flag = 0;
+            
             ROS_INFO("update message recieved");
 
             task_action(0) = this_msg.x;
             task_action(1) = this_msg.y;
             task_action(2) = this_msg.z;
+
+            ROS_INFO("task_action is (%f, %f, %f)", task_action(0), task_action(1), task_action(2));
 
             /*
                 code above get tast action
@@ -287,6 +300,8 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
             //std::cout << "task_action is " << task_action.format(CommaInitFmt) << std::endl;
 
             updateSimulator(sensing_action, observation, task_action);
+
+            ROS_INFO("simulator updated in if branch");
 
             if (verbosity > 0)
             {
@@ -310,13 +325,13 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
             ros::NodeHandle n_h;
             ros::Rate loop_rate(10);
 
-            ROS_INFO("REST FOR A WHILE!!!!!!!!");
-            int counter_b = 0;
-            while(counter_b < 100){
-                counter_b++;
-                ros::spinOnce();
-            }
-            ROS_INFO("REST DONE");
+            // ROS_INFO("REST FOR A WHILE!!!!!!!!");
+            // int counter_b = 0;
+            // while(counter_b < 100){
+            //     counter_b++;
+            //     ros::spinOnce();
+            // }
+            // ROS_INFO("REST DONE");
 
             /*
                 code above use spin loops to set timer that enable synchronization
@@ -358,12 +373,16 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
             task_action(1) = this_msg.y;
             task_action(2) = this_msg.z;
 
+            ROS_INFO("task_action is (%f, %f, %f)", task_action(0), task_action(1), task_action(2));
+
             /*
                 code above get tast action
             */
 
             planner_.predictBelief(task_action);
             updateSimulator(task_action);
+
+            ROS_INFO("simulator updated in else branch");
 
             if (verbosity > 0)
             {
