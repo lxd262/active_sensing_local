@@ -136,7 +136,8 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
             
             // Get sensing action.
             active_sensing_start = std::chrono::high_resolution_clock::now();
-            //sensing_action = planner_.getSensingAction();
+            //sensing_action = 
+            planner_.getSensingAction();
 
             /*
                 code below get sensing action    
@@ -229,10 +230,12 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
             //Eigen::IOFormat CommaInitFmt(4, 0, ", ", ", ", "", "", " << ", ";");
             //std::cout << "observation is " << observation.format(CommaInitFmt) << std::endl;
 
-            //planner_.updateBelief(sensing_action, observation);
+            //
+            planner_.updateBelief(sensing_action, observation);
 
             // Predict the new belief.
-            //task_action = planner_.getTaskAction();
+            //task_action = 
+            planner_.getTaskAction();
 
 
             /*
@@ -317,7 +320,8 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
         // Otherwise, set sensing action to DO NOTHING.
         else
         {
-            //task_action = planner_.getTaskAction();
+            //task_action = 
+            planner_.getTaskAction();
                         
             /*
                 code below use spin loops to set timer that enable synchronization
