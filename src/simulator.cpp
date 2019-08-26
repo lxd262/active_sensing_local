@@ -116,23 +116,6 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
         {
 
             ros::Rate loop_rate(10);
-
-            /*
-                code below use spin loops to set timer that enable synchronization
-            */
-
-            ROS_INFO("REST FOR A WHILE!!!!!!!! before subscribe observation request");
-            int counter_0 = 0;
-            while(counter_0 < 10){
-                counter_0++;
-                loop_rate.sleep();
-                ros::spinOnce();
-            }
-            ROS_INFO("1s REST DONE");
-
-            /*
-                code above use spin loops to set timer that enable synchronization
-            */
             
             // Get sensing action.
             active_sensing_start = std::chrono::high_resolution_clock::now();
@@ -143,8 +126,11 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
                 code below get sensing action    
             */
 
+            ros::Duration(0.4).sleep();
+
             ros::NodeHandle n_h;
             ros::Subscriber sub = n_h.subscribe("req_obsrv", 100000, reqObservationCallback);
+
             
             ROS_INFO("create a subber requesting observation");
 
@@ -176,23 +162,6 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
             // Update the belief.
             observation = model_.sampleObservation(states_.back(), sensing_action);
 
-            /*
-                code below use spin loops to set timer that enable synchronization
-            */
-
-            ROS_INFO("REST FOR A WHILE!!!!!!!! after recieve observation request");
-            int counter_a = 0;
-            while(counter_a < 10){
-                counter_a++;
-                loop_rate.sleep();
-                ros::spinOnce();
-            }
-            ROS_INFO("1s REST DONE");
-
-            /*
-                code above use spin loops to set timer that enable synchronization
-            */
-
 
             /*
                 code below publish observation
@@ -200,6 +169,9 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
             
             observation_global = observation(0);
             ros::Publisher observation_pub = n_h.advertise<active_sensing_continuous_local::ObsrvBack>("obversation_back", 100000);
+
+            ros::Duration(0.6).sleep();
+
             ROS_INFO("get into advertizing loop of observation back");
             while (ros::ok())
             {
@@ -239,24 +211,6 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
 
 
             /*
-                code below use spin loops to set timer that enable synchronization
-            */
-
-            ROS_INFO("REST FOR A WHILE!!!!!!!! after publishing observation back");
-            int counter_b = 0;
-            while(counter_b < 10){
-                counter_b++;
-                loop_rate.sleep();
-                ros::spinOnce();
-            }
-            ROS_INFO("1s REST DONE");
-
-            /*
-                code above use spin loops to set timer that enable synchronization
-            */
-
-
-            /*
                 code below get tast action
             */
 
@@ -277,6 +231,8 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
             // task_action(0) = update_location_x;
             // task_action(1) = update_location_y;
             // task_action(2) = update_location_z;
+
+            ros::Duration(0.2).sleep();
 
             ROS_INFO("waiting for update msg");
             boost::shared_ptr<const active_sensing_continuous_local::UpdateInfo> updatemsg = ros::topic::waitForMessage<active_sensing_continuous_local::UpdateInfo>("update", n_h);
@@ -363,6 +319,8 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
             // task_action(0) = update_location_x;
             // task_action(1) = update_location_y;
             // task_action(2) = update_location_z;
+
+            ros::Duration(0.4).sleep();
 
             ROS_INFO("waiting for updateelse msg");
             boost::shared_ptr<const active_sensing_continuous_local::UpdateInfo> updatemsg = ros::topic::waitForMessage<active_sensing_continuous_local::UpdateInfo>("updateelse", n_h);
