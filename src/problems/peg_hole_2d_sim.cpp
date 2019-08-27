@@ -37,9 +37,11 @@ void simulate(Simulator &simulator, Model &model, unsigned int num_trials, unsig
         std::cout << ", goal reached = " << model.isGoal(simulator.getStates().back()) << std::endl;
 
         // Print to file.
-        file << "trial " << i << ", reward = " << simulator.getCumulativeReward();
-        file << ", sensing time = " << simulator.getAverageActiveSensingTime();
-        file << ", goal reached = " << model.isGoal(simulator.getStates().back()) << std::endl;
+        file << "trial " << i << ", reward = " << simulator.getCumulativeReward()<<", \n";
+        file << "sensing time = " << simulator.getAverageActiveSensingTime()<<", \n";
+        file << "observation time = "<<simulator.getAvgObservationTime()<<", \n";
+        file << "task action time = "<<simulator.getAvgTaskactionTime()<<", \n";
+        file << "goal reached = " << model.isGoal(simulator.getStates().back()) << std::endl;
 
         if (model.isGoal(simulator.getStates().back()))
         {

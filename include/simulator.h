@@ -108,6 +108,9 @@ public:
      * @return The time the active sensing took (s).
      */
     double getAverageActiveSensingTime();
+    double getAvgObservationTime();
+    double getAvgTaskactionTime();
+    double getAvgPredictbeliefTime();
 
     void publishState();
 
@@ -156,6 +159,13 @@ private:
     /**
      * \brief This is the number of steps between two consecutive sensing actions.
      */
+    double observation_time_;
+    double updatebelief_time_;
+    double total_updatebelief_time_;
+    double taskaction_time_;
+    double predictbelief_time_;
+    double total_predictbelief_time_;
+
     unsigned int sensing_interval_;
 
     ros::NodeHandle *node_handle_;
