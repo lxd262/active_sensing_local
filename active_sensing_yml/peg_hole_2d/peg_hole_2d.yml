@@ -26,8 +26,8 @@ active_sensing:
   num_cores: 8
 
 simulator:
-  num_trials: 10
-  max_steps: 500
+  num_trials: 5
+  max_steps: 1000
   sensing_intervals: 8
   verbosity: 0
 

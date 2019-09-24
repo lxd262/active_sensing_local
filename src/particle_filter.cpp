@@ -4,13 +4,15 @@
 
 #include <visualization_msgs/MarkerArray.h>
 #include "../include/particle_filter.h"
-
+#include <iostream>
+using namespace std;
 
 Particle::Particle(const Eigen::VectorXd &value, double weight) :
     value_(value),
     dimension_(static_cast<unsigned int>(value.size()))
 {
     weight_ = weight;
+//cout<<"value_ in particle filter is"<<value<<endl;
 }
 
 Particle::~Particle() {}
@@ -68,19 +70,22 @@ void ParticleFilter::initParticles()
     particles_.clear();
     int dimension = model_.getStateSize();
     double weight = 1.0 / numParticles_;
-
+cout<<"init particles !!!"<<endl;
     for(int i  = 0; i < numParticles_; ++i)
     {
         Eigen::VectorXd value(dimension);
         value = model_.sampleInitState();
         Particle particle(value, weight);
         particles_.push_back(particle);
+//cout<<"particle in init is "<<particle.getValue()<<endl;
     }
+cout<<"init particles ends!!!"<<endl;
 
 }
 
 void ParticleFilter::updateWeights(unsigned int sensing_action, const Eigen::VectorXd &observation)
 {
+cout<<"update particlefilter weights"<<endl;
     updateWeights(particles_, sensing_action, observation);
 }
 
@@ -100,14 +105,28 @@ void ParticleFilter::updateWeights(std::vector<Particle> &particles, unsigned in
     }
 
 //    if (max_weight < std::numeric_limits<double>::epsilon())
-//        resetWeights(particles);
+   //     resetWeights(particles);
 //    else
-//        normalize(particles);
+//       normalize(particles);
+
+
+//cout<<"after update weights and the new particles are "<<endl;
+//for (Particle &particle: particles)
+//{
+//cout<<"after update weights particle value is "<<particle.getValue();
+//}
+
+cout<<"update weights finish!"<<endl;
+
+
+
+
 
 }
 
 void ParticleFilter::resample()
 {
+cout<<"resample"<<endl;
     resample(particles_);
 }
 
@@ -151,18 +170,22 @@ void ParticleFilter::resample(std::vector<Particle> &particles)
 
 void ParticleFilter::propagate(const Eigen::VectorXd task_action)
 {
+   // cout<<"particles_ is "<<particles_<<endl;
     propagate(particles_, task_action);
 }
 
 void ParticleFilter::propagate(std::vector<Particle> &particles, const Eigen::VectorXd &task_action) const
-{
-
+{    
+	ROS_INFO("in particle filter propagate");
+	int countparticles = 0;
     for (Particle &particle: particles)
     {
+	//cout<<"particle.getvalue() is "<<particle.getValue()<<endl;
         Eigen::VectorXd new_value = model_.sampleNextState(particle.getValue(), task_action);
         particle.setValue(new_value);
+	countparticles++;
     }
-
+	ROS_INFO("finish particle filter propagate and count particles is %d",countparticles);
 }
 
 void ParticleFilter::update(const Eigen::VectorXd task_action, unsigned int sensing_action,

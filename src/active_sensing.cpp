@@ -4,6 +4,8 @@
 
 #include "../include/active_sensing.h"
 #include "entropy_estimation.h"
+#include <iostream>
+using namespace std;
 
 
 ActiveSensing::ActiveSensing(Model &model, StateSpacePlanner &planner, ParticleFilter &particle_filter,
@@ -18,6 +20,7 @@ ActiveSensing::ActiveSensing(Model &model, StateSpacePlanner &planner, ParticleF
     num_nearest_neighbors_(num_nearest_neighbors),
     num_cores_(num_cores)
 {
+    cout<<"rng_ in activesensing cpp"<<endl;
     rng_ = new Rng(0);
 }
 
