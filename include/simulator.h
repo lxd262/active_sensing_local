@@ -11,6 +11,9 @@
 #include <tf/transform_broadcaster.h>
 #include "model.h"
 #include "planner.h"
+#include "active_sensing_continuous_local/action_message.h"
+
+//int globalcheckflag=0;
 
 
 class Simulator {
@@ -109,11 +112,20 @@ public:
      */
     double getAverageActiveSensingTime();
     double getAvgObservationTime();
+    double getAvgUpdatebeliefTime();
+    double getAvgTotalUpdatebeliefTime();
     double getAvgTaskactionTime();
     double getAvgPredictbeliefTime();
+    double getAvgTotalPredictbeliefTime();
+
+
+    //void pulishReqobsrv(ROS::NodeHandle nodehandle);
 
     void publishState();
 
+    //ros::NodeHandle n_h;
+    bool localmachine(active_sensing_continuous_local::action_message::Request &req,
+                  active_sensing_continuous_local::action_message::Response &res);
 private:
 
     /**
@@ -159,13 +171,13 @@ private:
     /**
      * \brief This is the number of steps between two consecutive sensing actions.
      */
+
     double observation_time_;
     double updatebelief_time_;
     double total_updatebelief_time_;
     double taskaction_time_;
     double predictbelief_time_;
     double total_predictbelief_time_;
-
     unsigned int sensing_interval_;
 
     ros::NodeHandle *node_handle_;

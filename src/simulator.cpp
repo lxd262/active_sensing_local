@@ -7,7 +7,11 @@
 #include "active_sensing_continuous_local/ObsrvBack.h"
 #include "active_sensing_continuous_local/ReqObsrv.h"
 #include "active_sensing_continuous_local/UpdateInfo.h"
-
+#include "active_sensing_continuous_local/CT.h"
+#include "active_sensing_continuous_local/action_message.h"
+#include "/home/user/ros_local_new/src/active_sensing_local-master/lib/random/include/rng.h"
+#include<iostream>
+using namespace std;
 unsigned int sensing_action_global;
 double observation_global;
 int req_obversation_flag = 0;
@@ -15,7 +19,14 @@ int update_flag = 0;
 double update_location_x;
 double update_location_y;
 double update_location_z;
-
+int communication_count = 0;
+int sensing_action_local;
+int ncount = 0;
+unsigned int sensing_action;
+Eigen::VectorXd observation(1);
+Eigen::VectorXd task_action(3);
+int Break_Point = 0;
+int Observation_point = 0;
 Simulator::Simulator(Model &model, BeliefSpacePlanner &planner, unsigned int sensing_interval) :
         model_(model),
         planner_(planner),
@@ -54,47 +65,105 @@ void Simulator::initSimulator()
 
 void Simulator::updateSimulator(unsigned int sensing_action, Eigen::VectorXd observation, Eigen::VectorXd task_action)
 {
+	globalcheckflag = 1;
+	nextflag=1;
+        ROS_INFO("update simulator");
     Eigen::VectorXd new_state = model_.sampleNextState(states_.back(), task_action);
+    ROS_INFO("new state0 is %f",new_state(0));
+    ROS_INFO("new state1 is %f",new_state(1));
+	nextflag=0;
     states_.push_back(new_state);
     sensing_actions_.push_back(sensing_action);
     observations_.push_back(observation);
     task_actions_.push_back(task_action);
     cumulative_reward_ += model_.getReward(new_state, task_action);
+	globalcheckflag = 0;
 }
 
 void Simulator::updateSimulator(Eigen::VectorXd task_action)
 {
+	globalcheckflag = 1;
+	nextflag=1;
+    ROS_INFO("updateelse simulator");
     Eigen::VectorXd new_state = model_.sampleNextState(states_.back(), task_action);
+    ROS_INFO("new state0 is %f",new_state(0));
+    ROS_INFO("new state1 is %f",new_state(1));
+	nextflag=0;
     states_.push_back(new_state);
     task_actions_.push_back(task_action);
     cumulative_reward_ += model_.getReward(new_state, task_action);
+	globalcheckflag = 0;
 }
 
-void reqObservationCallback(const active_sensing_continuous_local::ReqObsrv& msg)
+
+std::chrono::high_resolution_clock::time_point taskaction_start;
+std::chrono::high_resolution_clock::time_point taskaction_finish;
+std::chrono::duration<double> taskaction_elapsed_time;
+
+std::chrono::high_resolution_clock::time_point active_sensing_start;
+std::chrono::high_resolution_clock::time_point active_sensing_finish;
+std::chrono::duration<double> active_sensing_elapsed_time;
+
+
+
+bool Simulator::localmachine(active_sensing_continuous_local::action_message::Request &req,
+                  active_sensing_continuous_local::action_message::Response &res)
 {
-  ROS_INFO("observation: [%d]", msg.observe_there);
-  sensing_action_global = msg.observe_there;
-  req_obversation_flag = 1;
-  ROS_INFO("flag is %d", req_obversation_flag);
+    ROS_INFO("IN PROCESSING.");
+    switch(req.type)
+  {
+    case 1:
+        //planner_.normalizeBelief();
+        //sensing_action = planner_.getSensingAction();
+        ROS_INFO("RECEIVE SENSING ACTION.");
+        ROS_INFO("GETTING OBSERVATION.");
+        //res.x1 = model_.sampleObservation(states_.back(), req.x);
+        sensing_action_local=req.x;
+        active_sensing_finish = std::chrono::high_resolution_clock::now();
+        if(Observation_point==0)
+        {
+        observation = model_.sampleObservation(states_.back(), sensing_action_local);
+        planner_.updateBelief(sensing_action, observation);
+        task_action = planner_.getTaskAction(); 
+        Observation_point=1;
+        }
+        res.x1 = observation(0);
+        res.type1 = 2;
+        //observation = model_.sampleObservation(states_.back(), sensing_action);
+        //planner_.updateBelief(sensing_action, observation);
+	    //task_action = planner_.getTaskAction(); 
+        taskaction_start = std::chrono::high_resolution_clock::now();
+        break;
+    case 3:
+        ROS_INFO("RECEIVE TASK ACTION.");
+        ROS_INFO("PERFORMING");
+        ROS_INFO("TELL AWS CONTINUE");
+        task_action(0) = req.x;
+        task_action(1) = req.y;
+        task_action(2) = req.z;
+        taskaction_finish = std::chrono::high_resolution_clock::now();
+        res.x1 = 0;
+        res.y1 = 0;
+        res.z1 = 0;
+        res.type1 = 4;
+        planner_.predictBelief(task_action);
+        updateSimulator(sensing_action, observation, task_action);
+        ncount++;
+        communication_count++;
+        Break_Point=1;
+        break;
+  }
+
 }
 
-void updateCallback(const active_sensing_continuous_local::UpdateInfo& msg)
-{
-  ROS_INFO("task action recieved");
-  update_location_x = msg.x;
-  update_location_y = msg.y;
-  update_location_z = msg.z;
-  update_flag = 1;
-  ROS_INFO("flag is %d", update_flag);
-}
+
 
 void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_steps, unsigned int verbosity)
 {
     initSimulator();
-    unsigned int n = 0;
-    unsigned int sensing_action;
-    double active_sensing_time = 0;
+    ncount=0;
 
+    double active_sensing_time = 0;
     double observation_time = 0;
     double updatebelief_time =0;
     double taskaction_time = 0;
@@ -109,334 +178,125 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
     double avg_predictbelief_time = 0;
     double avg_total_predictbelief_time = 0;
 
-    Eigen::VectorXd observation(1);
-    Eigen::VectorXd task_action(3);
     states_.push_back(init_state);
-    std::chrono::high_resolution_clock::time_point active_sensing_start;
-    std::chrono::high_resolution_clock::time_point active_sensing_finish;
+
     std::chrono::high_resolution_clock::time_point observation_start;
     std::chrono::high_resolution_clock::time_point observation_finish;
     std::chrono::high_resolution_clock::time_point updatebelief_start;
     std::chrono::high_resolution_clock::time_point updatebelief_finish;
-    std::chrono::high_resolution_clock::time_point taskaction_start;
-    std::chrono::high_resolution_clock::time_point taskaction_finish;
+
     std::chrono::high_resolution_clock::time_point predictbelief_start;
     std::chrono::high_resolution_clock::time_point predictbelief_finish;
-    std::chrono::duration<double> active_sensing_elapsed_time;
     std::chrono::duration<double> observation_elapsed_time;
     std::chrono::duration<double> updatebelief_elapsed_time;
-    std::chrono::duration<double> taskaction_elapsed_time;
     std::chrono::duration<double> predictbelief_elapsed_time;
     std::chrono::duration<double> total_updatebelief_elapsed_time;
     std::chrono::duration<double> total_predictbelief_elapsed_time;
-
     if (verbosity > 0)
         std::cout << "state = \n" << states_.back().transpose() << std::endl;
 
     planner_.publishParticles();
 
-    while (!model_.isTerminal(states_.back()) && n < num_steps)
+
+    ros::NodeHandle nh;
+    /*ros::ServiceClient client = n.serviceClient<active_sensing_continues_local::action_message>("add_two_ints");
+    active_sensing_continues_local::action_message srv;*/
+    
+    ros::ServiceServer service = nh.advertiseService("new_active_sensing",&Simulator::localmachine,this);
+    ROS_INFO("Advertised service");
+    while(ros::ok&&!model_.isTerminal(states_.back()) && ncount < num_steps)
     {
-        // Normalize particle weights.
         planner_.normalizeBelief();
-
-        // If sensing is allowed in this step.
-        if (n % (sensing_interval_ + 1) == 0)
+        ROS_INFO("communication round is %d",communication_count);
+	    ROS_INFO("n is %d",ncount);
+        Observation_point=0;
+        if (ncount % (sensing_interval_ + 1) == 0)
         {
-
-            ros::Rate loop_rate(10);
-
-            //sensing_action = 
-            planner_.getSensingAction();
-
-            ros::Duration(0.8).sleep();
-            
-            // Get sensing action.
+            //planner_.normalizeBelief();
+	        //ROS_INFO("communication round is %d",communication_count);
+	        //ROS_INFO("n is %d",ncount);
+            sensing_action = planner_.getSensingAction();
             active_sensing_start = std::chrono::high_resolution_clock::now();
-        
-            /*
-                code below get sensing action    
-            */
-
-            ros::NodeHandle n_h;
-            ros::Subscriber sub = n_h.subscribe("req_obsrv", 100000, reqObservationCallback);
-
-            
-            ROS_INFO("create a subber requesting observation");
-
-            while(true){
-                ros::spinOnce();
-                loop_rate.sleep();
-                if(req_obversation_flag == 1){
-                    break;
-                }
+            while(ros::ok)
+            {
+            Break_Point = 0;
+            ros::spinOnce();
+            //ros::Duration(1.0).sleep();
+            if(Break_Point==1)
+            {
+                break;
             }
+            }
+            taskaction_elapsed_time = std::chrono::duration_cast<std::chrono::duration<double> >
+            (taskaction_finish-taskaction_start);
+            taskaction_time += taskaction_elapsed_time.count();
 
-            ROS_INFO("get out of subber loop of requesting subscription");
-
-            req_obversation_flag = 0;
-            ROS_INFO("req_obversation_flag is %d", req_obversation_flag);
-            ROS_INFO("sensing action is %d", sensing_action_global);
-            sensing_action = sensing_action_global;
-            sub.shutdown();
-
-            /*
-                code above get sensing action
-            */
-
-            active_sensing_finish = std::chrono::high_resolution_clock::now();
             active_sensing_elapsed_time = std::chrono::duration_cast<std::chrono::duration<double> >
                     (active_sensing_finish-active_sensing_start);
             active_sensing_time += active_sensing_elapsed_time.count();
-           
-            // Update the belief.
-            observation_start = std::chrono::high_resolution_clock::now();
-
-            observation = model_.sampleObservation(states_.back(), sensing_action);
-
-            observation_finish = std::chrono::high_resolution_clock::now();
-
-            observation_elapsed_time = std::chrono::duration_cast<std::chrono::duration<double> >
-                    (observation_finish-observation_start);
-            observation_time += observation_elapsed_time.count();
-
-            
-            /*
-                code below publish observation
-            */
-            
-            observation_global = observation(0);
-            ros::Publisher observation_pub = n_h.advertise<active_sensing_continuous_local::ObsrvBack>("obversation_back", 100000);
-
-            ros::Duration(0.6).sleep();
-
-            ROS_INFO("get into advertizing loop of observation back");
-            while (ros::ok())
-            {
-                int connections = observation_pub.getNumSubscribers();
-                ROS_INFO("connected: %d", connections);
-                active_sensing_continuous_local::ObsrvBack msg;
-                msg.observation_back = observation_global;
-                ROS_INFO("observe back: %f", observation_global);
-                if(connections > 0){
-                    int i = 0;
-                    while(i < 100){
-                        observation_pub.publish(msg);
-                        i++;
-                        ros::spinOnce();
-                    }
-                ROS_INFO("published");
-                break;
+            //observation = model_.sampleObservation(states_.back(), sensing_action);
+            //planner_.updateBelief(sensing_action, observation);
+	        //task_action = planner_.getTaskAction();
+                if (verbosity > 0)
+                {
+                    std::cout << "n = " << ncount << std::endl;
+                    std::cout << "sensing_action = " << sensing_action << std::endl;
+                    std::cout << "observation = " << observation.transpose() << std::endl;
+                    std::cout << "most_likely_state = " << planner_.getMaximumLikelihoodState().transpose() << std::endl;
+                    std::cout << "task_action = " << task_action.transpose() << std::endl;
+                    std::cout << "state = " << states_.back().transpose() << std::endl;
                 }
-                loop_rate.sleep();
-            }
-            ROS_INFO("get out of publishing loop of obversation back");
-            observation_pub.shutdown();
 
-            /*
-                code above publish observation
-            */
-
-            //Eigen::IOFormat CommaInitFmt(4, 0, ", ", ", ", "", "", " << ", ";");
-            //std::cout << "observation is " << observation.format(CommaInitFmt) << std::endl;
-
-            //
-            planner_.updateBelief(sensing_action, observation);
-
-            // Predict the new belief.
-            //task_action = 
-            planner_.getTaskAction();
-
-
-            /*
-                code below get tast action
-            */
-
-            // ros::Subscriber sub3 = n_h.subscribe("update", 1000, updateCallback);
-            // ROS_INFO("create a subber3");
-
-            // while(true){
-            //     ros::spinOnce();
-            //     loop_rate.sleep();
-            //     if(update_flag == 1){
-            //         break;
-            //     }
-            // }
-            // ROS_INFO("get out of subber3 loop");
-
-            // update_flag = 0;
-            // ROS_INFO("update_flag is %d", update_flag);
-            // task_action(0) = update_location_x;
-            // task_action(1) = update_location_y;
-            // task_action(2) = update_location_z;
-
-	        taskaction_start = std::chrono::high_resolution_clock::now();
-
-            ros::Duration(0.2).sleep();
-
-            ROS_INFO("waiting for update msg");
-            boost::shared_ptr<const active_sensing_continuous_local::UpdateInfo> updatemsg = ros::topic::waitForMessage<active_sensing_continuous_local::UpdateInfo>("update", n_h);
-            active_sensing_continuous_local::UpdateInfo this_msg;
-            if(updatemsg != NULL){
-                this_msg = *updatemsg;
-            }
-            update_flag = 0;
-            
-            ROS_INFO("update message recieved");
-
-            task_action(0) = this_msg.x;
-            task_action(1) = this_msg.y;
-            task_action(2) = this_msg.z;
-
-            ROS_INFO("task_action is (%f, %f, %f)", task_action(0), task_action(1), task_action(2));
-
-	        taskaction_finish = std::chrono::high_resolution_clock::now();
-
-	        taskaction_elapsed_time = std::chrono::duration_cast<std::chrono::duration<double> >(taskaction_finish-taskaction_start);
-	        taskaction_time +=taskaction_elapsed_time.count();
-
-            /*
-                code above get tast action
-            */
-
-            predictbelief_start = std::chrono::high_resolution_clock::now();
-
-            planner_.predictBelief(task_action);
-            updateSimulator(sensing_action, observation, task_action);
-
-	        predictbelief_finish = std::chrono::high_resolution_clock::now();
-
-	        predictbelief_elapsed_time = std::chrono::duration_cast<std::chrono::duration<double> >(predictbelief_finish-predictbelief_start);
-	        predictbelief_time +=predictbelief_elapsed_time.count();
-
-            ROS_INFO("simulator updated in if branch");
-
-            if (verbosity > 0)
-            {
-                std::cout << "n = " << n << std::endl;
-                std::cout << "sensing_action = " << sensing_action << std::endl;
-                std::cout << "observation = " << observation.transpose() << std::endl;
-                std::cout << "most_likely_state = " << planner_.getMaximumLikelihoodState().transpose() << std::endl;
-                std::cout << "task_action = " << task_action.transpose() << std::endl;
-                std::cout << "state = " << states_.back().transpose() << std::endl;
-            }
         }
-
-        // Otherwise, set sensing action to DO NOTHING.
         else
         {
-            //task_action = 
-            planner_.getTaskAction();
-                        
-            /*
-                code below use spin loops to set timer that enable synchronization
-            */
-            ros::NodeHandle n_h;
-            ros::Rate loop_rate(10);
-
-            // ROS_INFO("REST FOR A WHILE!!!!!!!!");
-            // int counter_b = 0;
-            // while(counter_b < 100){
-            //     counter_b++;
-            //     ros::spinOnce();
-            // }
-            // ROS_INFO("REST DONE");
-
-            /*
-                code above use spin loops to set timer that enable synchronization
-            */
-
-
-            /*
-                code below get tast action
-            */
-
-            // ros::Subscriber sub4 = n_h.subscribe("updateelse", 1000, updateCallback);
-            // ROS_INFO("create a subber4");
-
-            // while(true){
-            //     ros::spinOnce();
-            //     loop_rate.sleep();
-            //     if(update_flag == 1){
-            //         break;
-            //     }
-            // }
-            // ROS_INFO("get out of subber4 loop");
-
-            // update_flag = 0;
-            // ROS_INFO("update_flag is %d", update_flag);
-            // task_action(0) = update_location_x;
-            // task_action(1) = update_location_y;
-            // task_action(2) = update_location_z;
-
-            ros::Duration(0.4).sleep();
-
-            ROS_INFO("waiting for updateelse msg");
-            boost::shared_ptr<const active_sensing_continuous_local::UpdateInfo> updatemsg = ros::topic::waitForMessage<active_sensing_continuous_local::UpdateInfo>("updateelse", n_h);
-            active_sensing_continuous_local::UpdateInfo this_msg;
-            if(updatemsg != NULL){
-                this_msg = *updatemsg;
-            }
-            update_flag = 0;
-            ROS_INFO("updateelse message recieved");
-
-            task_action(0) = this_msg.x;
-            task_action(1) = this_msg.y;
-            task_action(2) = this_msg.z;
-
-            ROS_INFO("task_action is (%f, %f, %f)", task_action(0), task_action(1), task_action(2));
-
-            /*
-                code above get tast action
-            */
-
-            planner_.predictBelief(task_action);
-            updateSimulator(task_action);
-
-            ROS_INFO("simulator updated in else branch");
-
-            if (verbosity > 0)
+                //planner_.normalizeBelief();
+                ROS_INFO("communication round is %d",communication_count);
+	            ROS_INFO("n is %d",ncount);
+                task_action = planner_.getTaskAction();
+                ROS_INFO("task_action(0) is %f",task_action(0));
+                ROS_INFO("task_action(1) is %f",task_action(1));
+                planner_.predictBelief(task_action);
+                updateSimulator(task_action);
+                if (verbosity > 0)
+                {
+                    std::cout << "n = " << ncount << std::endl;
+                    std::cout << "sensing_action = " << sensing_action << std::endl;
+                    std::cout << "observation = " << observation.transpose() << std::endl;
+                    std::cout << "most_likely_state = " << planner_.getMaximumLikelihoodState().transpose() << std::endl;
+                    std::cout << "task_action = " << task_action.transpose() << std::endl;
+                    std::cout << "state = " << states_.back().transpose() << std::endl;
+                }
+                ncount++;
+                communication_count++;
+        }
+            planner_.publishParticles();
+            model_.publishMap();
+            if (has_publisher_)
             {
-                std::cout << "n = " << n << std::endl;
-                std::cout << "sensing_action = " << "n/a" << std::endl;
-                std::cout << "observation = " << "n/a" << std::endl;
-                std::cout << "most_likely_state = " << planner_.getMaximumLikelihoodState().transpose() << std::endl;
-                std::cout << "task_action = " << task_action.transpose() << std::endl;
-                std::cout << "state = " << states_.back().transpose() << std::endl;
+                publishState();
             }
-        }
-
-        planner_.publishParticles();
-        model_.publishMap();
-
-        if (has_publisher_)
-        {
-            publishState();
-        }
-
-        n++;
+	        ROS_INFO("!model_.isTerminal(states_.back()) after loop is %d",!model_.isTerminal(states_.back()));
+	        ROS_INFO("\n");
+            
+        //ros::Duration(1.0).sleep();
     }
+    int num_sensing_steps = (ncount + 1) / (sensing_interval_ + 1);
 
-    int num_sensing_steps = (n + 1) / (sensing_interval_ + 1);
-
-    if (num_sensing_steps > 0){
+    if (num_sensing_steps > 0)
+    {
         active_sensing_time_ = active_sensing_time / num_sensing_steps;
-
-	    avg_observation_time = observation_time/num_sensing_steps;
-        observation_time_=avg_observation_time;
-
-	    avg_taskaction_time = taskaction_time/num_sensing_steps;
-        taskaction_time_=avg_taskaction_time;
-
-	    avg_predictbelief_time = predictbelief_time/num_sensing_steps;
-        predictbelief_time_ = avg_predictbelief_time;
+        taskaction_time_ = taskaction_time / num_sensing_steps;
     }
     else
     {
         active_sensing_time_ = 0;
+        taskaction_time_ = 0;
     }
-        
+   
 }
+
+
 
 std::vector<Eigen::VectorXd> Simulator::getStates()
 {
@@ -469,19 +329,10 @@ double Simulator::getAverageActiveSensingTime()
 }
 
 
-double Simulator::getAvgObservationTime()
-{
-  return observation_time_;
-}
 double Simulator::getAvgTaskactionTime()
 {
 return taskaction_time_;
 }
-double Simulator::getAvgPredictbeliefTime()
-{
-return predictbelief_time_;
-}
-
 
 void Simulator::publishState()
 {

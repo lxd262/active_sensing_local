@@ -6,6 +6,7 @@
 #include "math_utils.h"
 #include <iostream>
 #include <tf/tf.h>
+#include"simulator.h"
 
 Rectangle::Rectangle(double dimension1, double dimension2) :
     dimension1_(dimension1),
@@ -168,6 +169,7 @@ Eigen::VectorXd PegHole2d::getNextState(const Eigen::VectorXd &state, const Eige
 
 Eigen::VectorXd PegHole2d::sampleInitState() const
 {
+ //ROS_INFO("init state \n");
     Eigen::VectorXd init_state(state_size_);
     init_belief_->dev(init_state);
 
@@ -179,10 +181,50 @@ Eigen::VectorXd PegHole2d::sampleInitState() const
 
 Eigen::VectorXd PegHole2d::sampleNextState(const Eigen::VectorXd &state, const Eigen::VectorXd &task_action) const
 {
+if(globalcheckflag==1)
+{
+    ROS_INFO("state0 in function is %f",state(0));
+    ROS_INFO("state1 in function is %f",state(1));
+    ROS_INFO("task action0 is %f",task_action(0));
+    ROS_INFO("task action1 is %f",task_action(1));
+    ROS_INFO("task action2 is %f",task_action(2));
+}
     Eigen::VectorXd noiseless_next_state = getNextState(state, task_action);
+if(globalcheckflag==1)
+{
+    ROS_INFO("new noiseless_next_state0 is %f",noiseless_next_state(0));
+    ROS_INFO("new noiseless_next_state1 is %f",noiseless_next_state(1));
+   // ROS_INFO("new noiseless_next_state2 is %f",noiseless_next_state(2));
+}
     Eigen::VectorXd noise(state_size_);
+   // ROS_INFO("noise(0)  is %f",noise(0));
+   // ROS_INFO("noise(1)  is %f",noise(1));
+   // ROS_INFO("i0flagcheckchange");
+
+	 i0flagcheck = 1;
+if(globalcheckflag&&nextflag==1)
+{
+	    ROS_INFO("update into dev");
+}
     motion_noise_->dev(noise);
+if(globalcheckflag&&nextflag==1)
+{
+	    ROS_INFO("update out dev");
+}
+	 i0flagcheck = 0;
+if(globalcheckflag==1){
+ROS_INFO("noise(0)  is %f",noise(0));
+ROS_INFO("noise(1)  is %f",noise(1));
+}
+  //  ROS_INFO("motion_noise(0)  is %f",motion_noise_(0));
+   // ROS_INFO("motion_noise(1)  is %f",motion_noise_(1));
+   // ROS_INFO("motion_noise(2)  is %f",motion_noise_(2));
     Eigen::VectorXd next_state = noiseless_next_state + noise;
+if(globalcheckflag==1)
+{
+    ROS_INFO("next_state0_before_while is %f",next_state(0));
+    ROS_INFO("next_state1_before_while is %f",next_state(1));
+}
 
     while (isCollision(next_state))
     {

@@ -30,7 +30,14 @@ endif()
 find_package(Boost COMPONENTS filesystem system REQUIRED)
 find_package(Threads REQUIRED)
 find_package(YamlCpp REQUIRED)
-find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs visualization_msgs tf)
+find_package(catkin REQUIRED COMPONENTS 
+		roscpp 
+		rospy 
+		std_msgs 
+		visualization_msgs 
+		tf
+		message_generation 
+		geometry_msgs)
 
 ######## message files added
 add_message_files(
@@ -38,17 +45,23 @@ add_message_files(
   ObsrvBack.msg
   ReqObsrv.msg
   UpdateInfo.msg
+  CT.msg	
+)
+
+add_service_files(
+  FILES
+  action_message.srv
 )
 
 generate_messages(
    DEPENDENCIES
+   geometry_msgs
    std_msgs
  )
 ####### message files added above
 
 catkin_package(
-    CATKIN_DEPENDS roscpp rospy std_msgs visualization_msgs tf
-)
+    CATKIN_DEPENDS roscpp rospy std_msgs visualization_msgs tf geometry_msgs message_runtime)
 
 # Add subdirectories.
 add_subdirectory(lib/random)
@@ -136,6 +149,7 @@ add_library(multitier_peg_hole_2d_planner src/planners/multitier_peg_hole_2d_pla
 add_library(capsule_robot_planner src/planners/capsule_robot_planner.cpp)
 
 add_executable(abstract_robot_sim src/problems/abstract_robot_sim.cpp)
+add_dependencies(abstract_robot_sim ${PROJECT_NAME}_generate_messages_cpp)
 target_link_libraries(
         abstract_robot_sim
         abstract_robot_model
@@ -148,6 +162,7 @@ target_link_libraries(
 )
 
 add_executable(peg_hole_2d_sim_local src/problems/peg_hole_2d_sim.cpp)
+add_dependencies(peg_hole_2d_sim_local ${PROJECT_NAME}_generate_messages_cpp)
 target_link_libraries(
         peg_hole_2d_sim_local
         peg_hole_2d_model
@@ -161,6 +176,7 @@ target_link_libraries(
 )
 
 add_executable(peg_hole_3d_sim src/problems/peg_hole_3d_sim.cpp)
+add_dependencies(peg_hole_3d_sim ${PROJECT_NAME}_generate_messages_cpp)
 target_link_libraries(
         peg_hole_3d_sim
         peg_hole_3d_model
@@ -175,6 +191,7 @@ target_link_libraries(
 )
 
 add_executable(multitier_peg_hole_2d_sim src/problems/multitier_peg_hole_2d_sim.cpp)
+add_dependencies(multitier_peg_hole_2d_sim ${PROJECT_NAME}_generate_messages_cpp)
 target_link_libraries(
         multitier_peg_hole_2d_sim
         multitier_peg_hole_2d_model
@@ -189,6 +206,7 @@ target_link_libraries(
 )
 
 add_executable(capsule_robot_sim src/problems/capsule_robot_sim.cpp)
+add_dependencies(capsule_robot_sim ${PROJECT_NAME}_generate_messages_cpp)
 target_link_libraries(
         capsule_robot_sim
         capsule_robot_model
@@ -203,6 +221,7 @@ target_link_libraries(
 )
 
 add_executable(peg_hole_3d_node src/ros_nodes/peg_hole_3d_node.cpp)
+add_dependencies(peg_hole_3d_node ${PROJECT_NAME}_generate_messages_cpp)
 target_link_libraries(peg_hole_3d_node ${catkin_LIBRARIES})
 
 # Add tests

@@ -22,6 +22,7 @@ void simulate(Simulator &simulator, Model &model, unsigned int num_trials, unsig
 {
     double total_reward = 0;
     double total_sensing_time = 0;
+    double total_taskaction_time = 0;
     unsigned int num_successes = 0;
     Eigen::VectorXd init_state;
 
@@ -29,36 +30,40 @@ void simulate(Simulator &simulator, Model &model, unsigned int num_trials, unsig
     {
         // Run simulation.
         init_state = model.sampleInitState();
+	cout<<"initstate is "<<init_state<<endl;
         simulator.simulate(init_state, max_steps, display);
 
         // Print to screen.
         std::cout << "trial " << i << ", reward = " << simulator.getCumulativeReward();
         std::cout << ", sensing time = " << simulator.getAverageActiveSensingTime();
+        std::cout <<", taskaction time = "<<simulator.getAvgTaskactionTime();
         std::cout << ", goal reached = " << model.isGoal(simulator.getStates().back()) << std::endl;
 
         // Print to file.
-        file << "trial " << i << ", reward = " << simulator.getCumulativeReward()<<", \n";
-        file << "sensing time = " << simulator.getAverageActiveSensingTime()<<", \n";
-        file << "observation time = "<<simulator.getAvgObservationTime()<<", \n";
-        file << "task action time = "<<simulator.getAvgTaskactionTime()<<", \n";
-        file << "goal reached = " << model.isGoal(simulator.getStates().back()) << std::endl;
+        file << "trial " << i << ", reward = " << simulator.getCumulativeReward();
+        file << ", sensing time = " << simulator.getAverageActiveSensingTime();
+        file << ", taskaction time = " << simulator.getAvgTaskactionTime();
+        file << ", goal reached = " << model.isGoal(simulator.getStates().back()) << std::endl;
 
         if (model.isGoal(simulator.getStates().back()))
         {
             num_successes++;
             total_reward += simulator.getCumulativeReward();
             total_sensing_time += simulator.getAverageActiveSensingTime();
+            total_taskaction_time += simulator.getAvgTaskactionTime();
         }
     }
 
     // Print to screen.
     std::cout << "average reward = " << total_reward / num_successes << std::endl;
     std::cout << "average sensing time = " << total_sensing_time / num_successes << std::endl;
+    std::cout << "average taskaction time = " << total_taskaction_time / num_successes << std::endl;
     std::cout << "number of success trials = " << num_successes << std::endl;
 
     // Print to file.
     file << "average reward = " << total_reward / num_successes << std::endl;
     file << "average sensing time = " << total_sensing_time / num_successes << std::endl;
+    file << "average taskaction time = " << total_taskaction_time / num_successes << std::endl;
     file << "number of success trials = " << num_successes << std::endl;
 }
 
@@ -108,17 +113,21 @@ int main(int argc, char** argv)
     double translation_step_size = root["state_space_planner"]["translation_step_size"].as<double>();
     double rotation_step_size = root["state_space_planner"]["rotation_step_size"].as<double>();
     double collision_tol = root["model"]["collision_tol"].as<double>();
+	cout<<"initilaize model"<<endl;
     PegHole2d model(peg_width, peg_height, hole_tolerance, init_mean, init_cov, motion_cov, sensing_cov,
                     translation_step_size, rotation_step_size, collision_tol);
 
     // Initilaize particle filter.
+	cout<<"initilaize particle filter"<<endl;
     unsigned int num_particles = root["particle_filter"]["num_particles"].as<uint>();
     ParticleFilter particle_filter(model, num_particles, &node_handle);
 
     // Initialize state-space planner.
+	cout<<"initialize state-space planner"<<endl;
     PegHole2dPlanner state_space_planner(peg_width, peg_height, hole_tolerance);
 
     // Initialize active sensing.
+	cout<<"initialize active sensing"<<endl;
     unsigned long num_sensing_actions = model.getSensingActions().size();
     unsigned int horizon = root["active_sensing"]["horizon"].as<uint>();
     double discount = root["active_sensing"]["discount"].as<double>();
@@ -133,11 +142,13 @@ int main(int argc, char** argv)
                                                              num_cores);
 
     // Initialize belief space planners.
+	cout<<"initialize belief space planner"<<endl;
     BeliefSpacePlanner random_planner(state_space_planner, random_action_sensing, particle_filter);
     BeliefSpacePlanner state_entropy_planner(state_space_planner, state_entropy_active_sensing, particle_filter);
     BeliefSpacePlanner action_entropy_planner(state_space_planner, action_entropy_active_sensing, particle_filter);
 
     // Initialize simulators.
+	cout<<"initialize simulator"<<endl;
     unsigned int num_trials = root["simulator"]["num_trials"].as<uint>();
     unsigned int max_steps = root["simulator"]["max_steps"].as<uint>();
     unsigned int sensing_interval = root["simulator"]["sensing_intervals"].as<uint>();
@@ -191,12 +202,14 @@ int main(int argc, char** argv)
     // Run state-entropy active sensing simulation.
     std::cout << "Running state-entropy active sensing simulations..." << std::endl;
     file << "State-Entropy Active Sensing Simulations" << std::endl;
+	// ros::Duration(10.0).sleep();
     simulate(state_entropy_simulator, model, num_trials, max_steps, file, verbosity);
     std::cout << "Finished state-entropy active sensing simulations." << std::endl << std::endl;
     file << std::endl;
 
     // Run action-entropy active sensing simulation.
     std::cout << "Running action-entropy active sensing simulations..." << std::endl;
+	 //ros::Duration(5.0).sleep();
     file << "Action-Entropy Active Sensing Simulations" << std::endl;
     simulate(action_entropy_simulator, model, num_trials, max_steps, file, verbosity);
     std::cout << "Finished action-entropy active sensing simulations." << std::endl << std::endl;
