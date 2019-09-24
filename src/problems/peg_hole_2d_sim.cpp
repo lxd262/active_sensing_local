@@ -17,6 +17,8 @@
 #include "simulator.h"
 #include "particle_filter.h"
 
+using namespace std;
+
 void simulate(Simulator &simulator, Model &model, unsigned int num_trials, unsigned int max_steps,
               std::ofstream &file, unsigned int display)
 {
@@ -113,7 +115,7 @@ int main(int argc, char** argv)
     double translation_step_size = root["state_space_planner"]["translation_step_size"].as<double>();
     double rotation_step_size = root["state_space_planner"]["rotation_step_size"].as<double>();
     double collision_tol = root["model"]["collision_tol"].as<double>();
-	cout<<"initilaize model"<<endl;
+	std::cout<<"initilaize model"<<std::endl;
     PegHole2d model(peg_width, peg_height, hole_tolerance, init_mean, init_cov, motion_cov, sensing_cov,
                     translation_step_size, rotation_step_size, collision_tol);
 
