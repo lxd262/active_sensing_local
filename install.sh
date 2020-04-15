@@ -21,7 +21,7 @@ sudo make install
 sudo apt-get install libhdf5-dev
 
 # Install random
-cd $cwd
-mkdir lib
-cd lib
-git clone https://github.com/tipakorng/random.git
+# cd $cwd
+# mkdir lib
+# cd lib
+# git clone https://github.com/tipakorng/random.git
