@@ -9,7 +9,7 @@
 #include "active_sensing_continuous_local/UpdateInfo.h"
 #include "active_sensing_continuous_local/CT.h"
 #include "active_sensing_continuous_local/action_message.h"
-#include "/home/user/ros_local_new/src/active_sensing_local-master/lib/random/include/rng.h"
+#include "rng.h"
 #include<iostream>
 using namespace std;
 unsigned int sensing_action_global;
