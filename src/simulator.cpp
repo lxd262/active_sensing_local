@@ -211,9 +211,11 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
         ROS_INFO("communication round is %d",communication_count);
 	    ROS_INFO("n is %d",ncount);
         Observation_point=0;
+        //Check for the roscore
          if(!ros::master::check()){
             ROS_ERROR("Failed to access roscore on round %d", communication_count);
             ros::Duration(2).sleep();
+            system("sudo ./recovery.sh");
         }
         if (ncount % (sensing_interval_ + 1) == 0 && ros::master::check())
         {
