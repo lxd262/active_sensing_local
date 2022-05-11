@@ -1,5 +1,6 @@
 //
 // Created by tipakorng on 3/3/16.
+//Modified by Lexi Scott in 2022
 //
 
 #include <visualization_msgs/MarkerArray.h>
@@ -210,7 +211,11 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
         ROS_INFO("communication round is %d",communication_count);
 	    ROS_INFO("n is %d",ncount);
         Observation_point=0;
-        if (ncount % (sensing_interval_ + 1) == 0)
+         if(!ros::master::check()){
+            ROS_ERROR("Failed to access roscore on round %d", communication_count);
+            ros::Duration(2).sleep();
+        }
+        if (ncount % (sensing_interval_ + 1) == 0 && ros::master::check())
         {
             //planner_.normalizeBelief();
 	        //ROS_INFO("communication round is %d",communication_count);

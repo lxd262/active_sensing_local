@@ -12,7 +12,7 @@ model:
   collision_tol: 0.001
 
 particle_filter:
-  num_particles: 100
+  num_particles: 2000
 
 state_space_planner:
   translation_step_size: 0.1
@@ -23,7 +23,7 @@ active_sensing:
   discount: 1.0
   num_observation_samples: 10
   num_nearest_neighbors: 5
-  num_cores: 8
+  num_cores: 10
 
 simulator:
   num_trials: 5
