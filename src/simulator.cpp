@@ -171,7 +171,9 @@ void timer(){
         ros::Duration(2).sleep();
         timeout += 1;
         if(timeout >= 10){
-            ROS_ERROR("LOST CONNECTION TO SERVER BEGIN TIMEOUT");
+            ROS_ERROR("LOST CONNECTION TO SERVER SWITCH TO LOCAL RECOVERY");
+            system("sudo ./serverRecovery.sh");
+
         }
 
     }
@@ -236,7 +238,7 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
          if(!ros::master::check()){
             ROS_ERROR("Failed to access roscore on round %d", communication_count);
             ros::Duration(2).sleep();
-            system("sudo ./recovery.sh");
+            system("sudo ./rosrecovery.sh");
         }
         if (ncount % (sensing_interval_ + 1) == 0 && ros::master::check())
         {
