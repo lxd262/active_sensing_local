@@ -12,6 +12,7 @@
 #include "active_sensing_continuous_local/action_message.h"
 #include "rng.h"
 #include<iostream>
+#include<thread>
 using namespace std;
 unsigned int sensing_action_global;
 double observation_global;
@@ -23,6 +24,8 @@ double update_location_z;
 int communication_count = 0;
 int sensing_action_local;
 int ncount = 0;
+int timeout =0;
+bool paused = false;
 unsigned int sensing_action;
 Eigen::VectorXd observation(1);
 Eigen::VectorXd task_action(3);
@@ -110,6 +113,9 @@ std::chrono::duration<double> active_sensing_elapsed_time;
 bool Simulator::localmachine(active_sensing_continuous_local::action_message::Request &req,
                   active_sensing_continuous_local::action_message::Response &res)
 {
+    paused = true;
+    timeout = 0;
+    ROS_INFO("SET TIME OUT EQUAL TO ZERO");
     ROS_INFO("IN PROCESSING.");
     switch(req.type)
   {
@@ -134,6 +140,7 @@ bool Simulator::localmachine(active_sensing_continuous_local::action_message::Re
         //planner_.updateBelief(sensing_action, observation);
 	    //task_action = planner_.getTaskAction(); 
         taskaction_start = std::chrono::high_resolution_clock::now();
+        paused = false;
         break;
     case 3:
         ROS_INFO("RECEIVE TASK ACTION.");
@@ -152,12 +159,24 @@ bool Simulator::localmachine(active_sensing_continuous_local::action_message::Re
         ncount++;
         communication_count++;
         Break_Point=1;
+        paused = false;
         break;
   }
 
 }
 
+void timer(){
+    while(!paused){
+        ROS_INFO("WE COUNTING %d", timeout);
+        ros::Duration(2).sleep();
+        timeout += 1;
+        if(timeout >= 10){
+            ROS_ERROR("LOST CONNECTION TO SERVER BEGIN TIMEOUT");
+        }
 
+    }
+
+}
 
 void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_steps, unsigned int verbosity)
 {
@@ -205,6 +224,8 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
     
     ros::ServiceServer service = nh.advertiseService("new_active_sensing",&Simulator::localmachine,this);
     ROS_INFO("Advertised service");
+    std::thread thread_obj(timer);
+    thread_obj.detach();
     while(ros::ok&&!model_.isTerminal(states_.back()) && ncount < num_steps)
     {
         planner_.normalizeBelief();
