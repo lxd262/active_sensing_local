@@ -9,6 +9,8 @@
 #include <chrono>
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
+#include <string>
+#include <fstream>
 #include "model.h"
 #include "planner.h"
 #include "active_sensing_continuous_local/action_message.h"
@@ -68,7 +70,7 @@ public:
      *
      * @param num_steps The number of steps the simulator will run.
      */
-    void simulate(const Eigen::VectorXd &init_state, unsigned int num_steps, unsigned int verbosity=0);
+    void simulate(const Eigen::VectorXd &init_state, unsigned int num_steps, unsigned int verbosity=0, bool recovery = false);
 
     /**
      * \brief Return the state trajectory.

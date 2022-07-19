@@ -31,6 +31,8 @@ Eigen::VectorXd observation(1);
 Eigen::VectorXd task_action(3);
 int Break_Point = 0;
 int Observation_point = 0;
+int totalClients = 0;
+bool recovery = false;
 Simulator::Simulator(Model &model, BeliefSpacePlanner &planner, unsigned int sensing_interval) :
         model_(model),
         planner_(planner),
@@ -113,10 +115,17 @@ std::chrono::duration<double> active_sensing_elapsed_time;
 bool Simulator::localmachine(active_sensing_continuous_local::action_message::Request &req,
                   active_sensing_continuous_local::action_message::Response &res)
 {
+    totalClients +=1;
     paused = true;
     timeout = 0;
     ROS_INFO("SET TIME OUT EQUAL TO ZERO");
     ROS_INFO("IN PROCESSING.");
+    ROS_INFO("INCREASED TOTAL CLIENTS %d", totalClients);
+  
+    if(req.source == 1 & recovery){
+        ROS_INFO("GOT SERVER WHILE RUNNING LOCAL.");
+        ros::Duration(2).sleep();
+    }
     switch(req.type)
   {
     case 1:
@@ -172,7 +181,24 @@ void timer(){
         timeout += 1;
         if(timeout >= 10){
             ROS_ERROR("LOST CONNECTION TO SERVER SWITCH TO LOCAL RECOVERY");
-            system("sudo ./serverRecovery.sh");
+            
+            ofstream fw("recoveryclient.txt", std::ofstream::out);
+            if (fw.is_open()){
+                fw << endl;
+                //fw << ("Communcation count is ");
+                fw << (communication_count) << endl;
+                //fw << ("N count is");
+                fw<< (ncount) << endl;
+                // fw << ("Sensing action local "); 
+                fw << sensing_action_local << endl;
+                //fw << ("Sensing action global ");
+                fw << sensing_action_global << endl;
+                //fw << ("Sensing action ");
+                fw << sensing_action << endl;
+            }
+                fw.close();
+            system("./serverRecovery.sh");
+            exit(0);
 
         }
 
@@ -180,7 +206,7 @@ void timer(){
 
 }
 
-void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_steps, unsigned int verbosity)
+void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_steps, unsigned int verbosity, bool recovery1)
 {
     initSimulator();
     ncount=0;
@@ -199,6 +225,25 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
     double avg_taskaction_time = 0;
     double avg_predictbelief_time = 0;
     double avg_total_predictbelief_time = 0;
+    recovery = recovery1;
+    std::cout<< "RECOVERY VARIABLE IS";
+    std::cout<<recovery;
+    if(recovery){
+        std::cout<<"Entering from recovery mode, using variables -";
+        ifstream inFile("recoveryclient.txt", ios::in);
+       
+        inFile >> communication_count, ncount, sensing_action_local, sensing_action_global, sensing_action;
+        std::cout <<"N COUNT SHOULD BE PRINTING JUST BELOW THIS LOOK LOOK";
+        std::cout<<ncount;
+
+
+        /*ncount = 10;
+        communication_count = 10;
+        sensing_action_global = 0;
+        sensing_action_local = 0;
+        sensing_action = 1;
+        */
+    }
 
     states_.push_back(init_state);
 
@@ -238,7 +283,23 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
          if(!ros::master::check()){
             ROS_ERROR("Failed to access roscore on round %d", communication_count);
             ros::Duration(2).sleep();
+              ofstream fw("recoveryclient.txt", std::ofstream::out);
+            if (fw.is_open()){
+                fw << endl;
+                //fw << ("Communcation count is ");
+                fw << (communication_count) << endl;
+                //fw << ("N count is");
+                fw<< (ncount) << endl;
+                // fw << ("Sensing action local "); 
+                fw << sensing_action_local << endl;
+                //fw << ("Sensing action global ");
+                fw << sensing_action_global << endl;
+                //fw << ("Sensing action ");
+                fw << sensing_action << endl;
+            }
+                fw.close();
             system("sudo ./rosrecovery.sh");
+            exit(0);
         }
         if (ncount % (sensing_interval_ + 1) == 0 && ros::master::check())
         {

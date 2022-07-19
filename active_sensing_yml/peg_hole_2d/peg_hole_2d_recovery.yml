@@ -12,7 +12,7 @@ model:
   collision_tol: 0.001
 
 particle_filter:
-  num_particles: 200
+  num_particles: 100
 
 state_space_planner:
   translation_step_size: 0.1

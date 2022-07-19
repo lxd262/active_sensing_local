@@ -20,7 +20,7 @@
 using namespace std;
 
 void simulate(Simulator &simulator, Model &model, unsigned int num_trials, unsigned int max_steps,
-              std::ofstream &file, unsigned int display)
+              std::ofstream &file, unsigned int display, bool recovery)
 {
     double total_reward = 0;
     double total_sensing_time = 0;
@@ -33,7 +33,7 @@ void simulate(Simulator &simulator, Model &model, unsigned int num_trials, unsig
         // Run simulation.
         init_state = model.sampleInitState();
 	    std::cout<<"initstate is "<<init_state<<std::endl;
-        simulator.simulate(init_state, max_steps, display);
+        simulator.simulate(init_state, max_steps, display, recovery);
 
         // Print to screen.
         std::cout << "trial " << i << ", reward = " << simulator.getCumulativeReward();
@@ -71,12 +71,20 @@ void simulate(Simulator &simulator, Model &model, unsigned int num_trials, unsig
 
 int main(int argc, char** argv)
 {
+    bool recovery = false;
     // Initialize yml node.
     if (argc < 2)
         throw std::invalid_argument("Need problem definition file!");
     else if (argc < 3)
         throw std::invalid_argument("Need path to output folder!");
 
+    else if (argc > 3)
+        recovery = argv[3];
+        std::cout<< "WE HAVE AN ARGUMENT HERE";
+
+    /*To determine if it should pick up from a recovery file
+        argv[3] boolean = whether or not were recovering
+    */
     // Get root node of the yml file.
     std::string definition_file(argv[1]);
     YAML::Node root = YAML::LoadFile(definition_file);
@@ -150,6 +158,7 @@ int main(int argc, char** argv)
     BeliefSpacePlanner action_entropy_planner(state_space_planner, action_entropy_active_sensing, particle_filter);
 
     // Initialize simulators.
+    //Probably need to add the current state to be taken in here, then handle in simulator
 	cout<<"initialize simulator"<<endl;
     unsigned int num_trials = root["simulator"]["num_trials"].as<uint>();
     unsigned int max_steps = root["simulator"]["max_steps"].as<uint>();
@@ -195,9 +204,10 @@ int main(int argc, char** argv)
     file << std::endl;
 
     // Run random active sensing simulation.
+    //Put whether or not its picking up in the simulate function itself, that way we only need to add it in one place
     std::cout << "Running random active sensing simulations..." << std::endl;
     file << "Random Active Sensing Simulations" << std::endl;
-    simulate(random_simulator, model, num_trials, max_steps, file, verbosity);
+    simulate(random_simulator, model, num_trials, max_steps, file, verbosity, recovery);
     std::cout << "Finished random active sensing simulations." << std::endl << std::endl;
     file << std::endl;
 
@@ -205,7 +215,7 @@ int main(int argc, char** argv)
     std::cout << "Running state-entropy active sensing simulations..." << std::endl;
     file << "State-Entropy Active Sensing Simulations" << std::endl;
 	// ros::Duration(10.0).sleep();
-    simulate(state_entropy_simulator, model, num_trials, max_steps, file, verbosity);
+    simulate(state_entropy_simulator, model, num_trials, max_steps, file, verbosity, recovery);
     std::cout << "Finished state-entropy active sensing simulations." << std::endl << std::endl;
     file << std::endl;
 
@@ -213,7 +223,7 @@ int main(int argc, char** argv)
     std::cout << "Running action-entropy active sensing simulations..." << std::endl;
 	 //ros::Duration(5.0).sleep();
     file << "Action-Entropy Active Sensing Simulations" << std::endl;
-    simulate(action_entropy_simulator, model, num_trials, max_steps, file, verbosity);
+    simulate(action_entropy_simulator, model, num_trials, max_steps, file, verbosity, recovery);
     std::cout << "Finished action-entropy active sensing simulations." << std::endl << std::endl;
     file << std::endl;
 
