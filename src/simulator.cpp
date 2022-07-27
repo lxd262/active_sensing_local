@@ -33,6 +33,7 @@ int Break_Point = 0;
 int Observation_point = 0;
 int totalClients = 0;
 bool recovery = false;
+bool localShutDown = false;
 Simulator::Simulator(Model &model, BeliefSpacePlanner &planner, unsigned int sensing_interval) :
         model_(model),
         planner_(planner),
@@ -68,7 +69,7 @@ void Simulator::initSimulator()
     // Reset active sensing time
     active_sensing_time_ = 0;
 }
-
+//Two update simulators functions that would probably be whats moved
 void Simulator::updateSimulator(unsigned int sensing_action, Eigen::VectorXd observation, Eigen::VectorXd task_action)
 {
 	globalcheckflag = 1;
@@ -124,8 +125,14 @@ bool Simulator::localmachine(active_sensing_continuous_local::action_message::Re
   
     if(req.source == 1 & recovery){
         ROS_INFO("GOT SERVER WHILE RUNNING LOCAL.");
-        ros::Duration(2).sleep();
+        localShutDown = true;
     }
+    else if(req.source == 0 & localShutDown == true){
+        ROS_ERROR("FOUND SERVER WHILE RUNNING LOCAL SHUTDOWN LOCAL");
+        res.type1 = 20;
+        paused = false;
+    }
+    if(!(req.source == 0 & localShutDown == true)){
     switch(req.type)
   {
     case 1:
@@ -135,6 +142,7 @@ bool Simulator::localmachine(active_sensing_continuous_local::action_message::Re
         ROS_INFO("GETTING OBSERVATION.");
         //res.x1 = model_.sampleObservation(states_.back(), req.x);
         sensing_action_local=req.x;
+        ROS_INFO("AFTER REQUEST X");
         active_sensing_finish = std::chrono::high_resolution_clock::now();
         if(Observation_point==0)
         {
@@ -171,6 +179,8 @@ bool Simulator::localmachine(active_sensing_continuous_local::action_message::Re
         paused = false;
         break;
   }
+  }
+  paused = false;
 
 }
 
@@ -179,8 +189,9 @@ void timer(){
         ROS_INFO("WE COUNTING %d", timeout);
         ros::Duration(2).sleep();
         timeout += 1;
-        if(timeout >= 10){
+        if(timeout >= 5){
             ROS_ERROR("LOST CONNECTION TO SERVER SWITCH TO LOCAL RECOVERY");
+            localShutDown = false;
             
             ofstream fw("recoveryclient.txt", std::ofstream::out);
             if (fw.is_open()){
