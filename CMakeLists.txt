@@ -74,7 +74,7 @@ include_directories(
         lib/random/include
         ${catkin_INCLUDE_DIRS}
         ${EIGEN3_INCLUDE_DIR}
-        ${fcl_INCLUDE_DIR}
+        ${pkg_fcl_INCLUDE_DIR}
         ${Boost_INCLUDE_DIR}
         ${YAMLCPP_INCLUDE_DIR}
 
@@ -108,7 +108,7 @@ target_link_libraries(
         ${Boost_FILESYSTEM_LIBRARY}
         ${Boost_SYSTEM_LIBRARY}
         ${catkin_LIBRARIES}
-        fcl
+	${pkg_fcl_INCLUDE_DIRS}
 )
 
 add_library(peg_hole_3d_model src/models/peg_hole_3d_model.cpp)

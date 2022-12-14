@@ -31,9 +31,12 @@ Eigen::VectorXd observation(1);
 Eigen::VectorXd task_action(3);
 int Break_Point = 0;
 int Observation_point = 0;
-int totalClients = 0;
 bool recovery = false;
 bool localShutDown = false;
+enum sources { local, cloud };
+enum states { standard, localRecovery, keepAlive, wake };
+enum serverResponses {observationSig= 2, keepAliveSig = 20, continueSig =4};
+int state = standard;
 Simulator::Simulator(Model &model, BeliefSpacePlanner &planner, unsigned int sensing_interval) :
         model_(model),
         planner_(planner),
@@ -116,23 +119,37 @@ std::chrono::duration<double> active_sensing_elapsed_time;
 bool Simulator::localmachine(active_sensing_continuous_local::action_message::Request &req,
                   active_sensing_continuous_local::action_message::Response &res)
 {
-    totalClients +=1;
-    paused = true;
-    timeout = 0;
-    ROS_INFO("SET TIME OUT EQUAL TO ZERO");
-    ROS_INFO("IN PROCESSING.");
-    ROS_INFO("INCREASED TOTAL CLIENTS %d", totalClients);
-  
-    if(req.source == 1 & recovery){
-        ROS_INFO("GOT SERVER WHILE RUNNING LOCAL.");
-        localShutDown = true;
+    
+    if (state == keepAlive & req.source == local) {
+        cout << "Signal does not count for reset";
     }
-    else if(req.source == 0 & localShutDown == true){
+    else {
+        paused = true;
+        timeout = 0;
+        ROS_INFO("SET TIME OUT EQUAL TO ZERO");
+    }
+    if (state == wake) {
+        ROS_ERROR("WAKING LOCAL RECOVERY");
+        state = localRecovery;
+        res.type1 = continueSig;
+
+    }
+   
+  
+  
+    if(req.source == cloud & state==localRecovery){
+        ROS_ERROR("GOT SERVER WHILE RUNNING LOCAL.");
+        state = keepAlive;
+        ros::Duration(2).sleep();
+
+    }
+    else if(req.source == local & state == keepAlive){
         ROS_ERROR("FOUND SERVER WHILE RUNNING LOCAL SHUTDOWN LOCAL");
-        res.type1 = 20;
+        //res.type1 = keepAliveSig;
         paused = false;
     }
-    if(!(req.source == 0 & localShutDown == true)){
+
+    if(!(req.source == local & state == keepAlive)){
     switch(req.type)
   {
     case 1:
@@ -152,7 +169,7 @@ bool Simulator::localmachine(active_sensing_continuous_local::action_message::Re
         Observation_point=1;
         }
         res.x1 = observation(0);
-        res.type1 = 2;
+        res.type1 = observationSig;
         //observation = model_.sampleObservation(states_.back(), sensing_action);
         //planner_.updateBelief(sensing_action, observation);
 	    //task_action = planner_.getTaskAction(); 
@@ -170,7 +187,7 @@ bool Simulator::localmachine(active_sensing_continuous_local::action_message::Re
         res.x1 = 0;
         res.y1 = 0;
         res.z1 = 0;
-        res.type1 = 4;
+        res.type1 = continueSig;
         planner_.predictBelief(task_action);
         updateSimulator(sensing_action, observation, task_action);
         ncount++;
@@ -185,34 +202,50 @@ bool Simulator::localmachine(active_sensing_continuous_local::action_message::Re
 }
 
 void timer(){
-    while(!paused){
-        ROS_INFO("WE COUNTING %d", timeout);
-        ros::Duration(2).sleep();
-        timeout += 1;
-        if(timeout >= 5){
-            ROS_ERROR("LOST CONNECTION TO SERVER SWITCH TO LOCAL RECOVERY");
-            localShutDown = false;
-            
-            ofstream fw("recoveryclient.txt", std::ofstream::out);
-            if (fw.is_open()){
-                fw << endl;
-                //fw << ("Communcation count is ");
-                fw << (communication_count) << endl;
-                //fw << ("N count is");
-                fw<< (ncount) << endl;
-                // fw << ("Sensing action local "); 
-                fw << sensing_action_local << endl;
-                //fw << ("Sensing action global ");
-                fw << sensing_action_global << endl;
-                //fw << ("Sensing action ");
-                fw << sensing_action << endl;
-            }
+
+    while(ros::ok) {
+        while (state != localRecovery) {
+            ROS_ERROR("Are we paused %d?", paused);
+            ROS_ERROR("WE COUNTING %d", timeout);
+            ros::Duration(2).sleep();
+            timeout += 1;
+            if (timeout >= 10) {
+                ROS_ERROR("LOST CONNECTION TO SERVER SWITCH TO LOCAL RECOVERY");
+                localShutDown = false;
+
+                if (state == standard) {
+                    cout << "In standard state";
+                    state = localRecovery;
+                    system("./serverRecovery.sh");
+                }
+
+                else if (state == keepAlive) {
+                    cout << "State is keep alive";
+                    state = localRecovery;
+                }
+
+                ofstream fw("recoveryclient.txt", std::ofstream::out);
+                if (fw.is_open()) {
+                    fw << endl;
+                    //fw << ("Communcation count is ");
+                    fw << (communication_count) << endl;
+                    //fw << ("N count is");
+                    fw << (ncount) << endl;
+                    // fw << ("Sensing action local "); 
+                    fw << sensing_action_local << endl;
+                    //fw << ("Sensing action global ");
+                    fw << sensing_action_global << endl;
+                    //fw << ("Sensing action ");
+                    fw << sensing_action << endl;
+                }
                 fw.close();
-            system("./serverRecovery.sh");
-            exit(0);
+                //exit(0);
 
+                recovery = true;
+                timeout = 0;
+            }
         }
-
+ 
     }
 
 }
@@ -221,7 +254,7 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
 {
     initSimulator();
     ncount=0;
-
+    ros::AsyncSpinner spinner(2);
     double active_sensing_time = 0;
     double observation_time = 0;
     double updatebelief_time =0;
@@ -244,7 +277,6 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
         ifstream inFile("recoveryclient.txt", ios::in);
        
         inFile >> communication_count, ncount, sensing_action_local, sensing_action_global, sensing_action;
-        std::cout <<"N COUNT SHOULD BE PRINTING JUST BELOW THIS LOOK LOOK";
         std::cout<<ncount;
 
 
@@ -254,6 +286,9 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
         sensing_action_local = 0;
         sensing_action = 1;
         */
+    }
+    else {
+        int state = standard;
     }
 
     states_.push_back(init_state);
@@ -284,6 +319,7 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
     ROS_INFO("Advertised service");
     std::thread thread_obj(timer);
     thread_obj.detach();
+    spinner.start();
     while(ros::ok&&!model_.isTerminal(states_.back()) && ncount < num_steps)
     {
         planner_.normalizeBelief();
@@ -322,7 +358,6 @@ void Simulator::simulate(const Eigen::VectorXd &init_state, unsigned int num_ste
             while(ros::ok)
             {
             Break_Point = 0;
-            ros::spinOnce();
             //ros::Duration(1.0).sleep();
             if(Break_Point==1)
             {
