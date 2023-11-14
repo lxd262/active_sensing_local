@@ -7,7 +7,7 @@
 #include "active_sensing_continuous_local/ObsrvBack.h"
 #include "active_sensing_continuous_local/ReqObsrv.h"
 #include "active_sensing_continuous_local/UpdateInfo.h"
-#include "/home/user/row_ac_local/src/active_sensing_local-master/lib/random/include/rng.h"
+#include "rng.h"
 
 unsigned int sensing_action_global;
 double observation_global;
