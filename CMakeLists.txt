@@ -162,19 +162,19 @@ target_link_libraries(
         ${HDF_LIBRARIES}
 )
 
-add_executable(peg_hole_2d_sim_local src/problems/peg_hole_2d_sim.cpp)
-add_dependencies(peg_hole_2d_sim_local ${PROJECT_NAME}_generate_messages_cpp)
-target_link_libraries(
-        peg_hole_2d_sim_local
-        peg_hole_2d_model
-        peg_hole_2d_planner
-        simulator
-        particle_filter
-        entropy_estimation
-        active_sensing
-        ${HDF_LIBRARIES}
-        ${YAMLCPP_LIBRARY}
-)
+# add_executable(peg_hole_2d_sim_local src/problems/peg_hole_2d_sim.cpp)
+# add_dependencies(peg_hole_2d_sim_local ${PROJECT_NAME}_generate_messages_cpp)
+# target_link_libraries(
+#         peg_hole_2d_sim_local
+#         peg_hole_2d_model
+#         peg_hole_2d_planner
+#         simulator
+#         particle_filter
+#         entropy_estimation
+#         active_sensing
+#         ${HDF_LIBRARIES}
+#         ${YAMLCPP_LIBRARY}
+# )
 
 add_executable(peg_hole_3d_sim src/problems/peg_hole_3d_sim.cpp)
 add_dependencies(peg_hole_3d_sim ${PROJECT_NAME}_generate_messages_cpp)
