@@ -12,6 +12,7 @@ RUN sudo apt-get install libopenmpi-dev
 
 RUN sudo ln -s /usr/lib/x86_64-linux-gnu/hdf5/serial/libhdf5.so /usr/lib/libhdf5.so
 RUN sudo ln -s /usr/lib/x86_64-linux-gnu/hdf5/serial/libhdf5_hl.so /usr/lib/libhdf5_hl.so
-COPY . . 
+# commented out copy step
+# COPY . . 
 WORKDIR "/catkin_localhost"
 RUN /bin/bash -c ' . /opt/ros/noetic/setup.bash ; catkin_make'

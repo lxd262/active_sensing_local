@@ -8,6 +8,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 find_package(Eigen3 REQUIRED)
 find_package(HDF5 REQUIRED)
 
+link_directories(/usr/lib/x86_64-linux-gnu/hdf5/serial)
 if(HDF5_FOUND)
     message(Found HDF5)
     set(HDF_LIBRARIES hdf5_hl hdf5)
